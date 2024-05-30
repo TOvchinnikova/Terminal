@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.t_ovchinnikova.terminal.data.ApiFactory
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -16,7 +17,10 @@ class TerminalViewModel : ViewModel() {
     private val _state = MutableStateFlow<TerminalScreenState>(TerminalScreenState.Initial)
     val state = _state.asStateFlow()
 
+    private var lastState: TerminalScreenState = TerminalScreenState.Initial
+
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        _state.value = lastState
         Log.d("TerminalViewModel", "Exception caught: $throwable")
     }
 
@@ -24,10 +28,12 @@ class TerminalViewModel : ViewModel() {
         loadBarList()
     }
 
-    private fun loadBarList() {
+    fun loadBarList(timeFrame: TimeFrame = TimeFrame.HOUR_1) {
+        lastState = state.value
+        _state.value = TerminalScreenState.Loading
         viewModelScope.launch(exceptionHandler) {
-            val barList = apiService.loadBars().barList
-            _state.value = TerminalScreenState.Content(barList)
+            val barList = apiService.loadBars(timeFrame.value).barList
+            _state.value = TerminalScreenState.Content(barList, timeFrame)
         }
     }
 }
